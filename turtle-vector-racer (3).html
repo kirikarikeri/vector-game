@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cat Vector Racer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0a120d;
+    --panel:#101e17;
+    --panel-2:#152a20;
+    --line:#26402f;
+    --tarmac:#eef0e6;
+    --infield:#6b7268;
+    --turtle:#3f9d55;
+    --turtle-dark:#276033;
+    --amber:#e3a33d;
+    --red:#d1543f;
+    --blue:#5b8fd6;
+    --text:#eef0e6;
+    --text-dim:#93a898;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg-deep);color:var(--text);font-family:'IBM Plex Mono',monospace;}
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+  body{min-height:100vh;display:flex;flex-direction:column;}
+
+  .titlebar{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 18px;background:linear-gradient(180deg,#132419,#0d1a12);
+    border-bottom:1px solid var(--line);
+  }
+  .titlebar .shell{font-size:20px;}
+  .titlebar h1{font-size:16px;font-weight:700;letter-spacing:.02em;margin:0;color:var(--text);}
+  .titlebar span.tag{color:var(--text-dim);font-size:12px;margin-left:auto;font-family:'IBM Plex Mono',monospace;}
+
+  .layout{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 360px;
+    gap:14px;
+    padding:14px;
+    flex:1;
+  }
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .track-wrap{
+    background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:8px;display:flex;flex-direction:column;gap:8px;
+  }
+  canvas{width:100%;height:auto;display:block;border-radius:6px;background:#fff;}
+
+  .hud-strip{
+    display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text-dim);
+  }
+  .hud-chip{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+    padding:5px 9px;display:flex;gap:6px;align-items:baseline;
+  }
+  .hud-chip b{color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+
+  .sidebar{display:flex;flex-direction:column;gap:12px;min-width:0;}
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;
+  }
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--amber);margin:0 0 10px 0;}
+
+  .field{margin-bottom:10px;}
+  .field label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:4px;}
+  .field label span.val{color:var(--turtle);font-weight:600;}
+  .field input[type=range]{width:100%;accent-color:var(--turtle);}
+  .field input[type=number]{
+    width:100%;background:var(--bg-deep);border:1px solid var(--line);color:var(--text);
+    padding:6px 8px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:13px;
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+  button{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;
+    border:none;border-radius:7px;padding:10px 14px;cursor:pointer;
+    background:var(--turtle);color:#052008;letter-spacing:.02em;
+  }
+  button:hover{background:#4bb763;}
+  button.secondary{background:transparent;border:1px solid var(--line);color:var(--text);}
+  button.secondary:hover{border-color:var(--turtle);color:var(--turtle);}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  .btnrow{display:flex;gap:8px;}
+
+  .status-line{font-size:12px;padding:8px 10px;border-radius:6px;margin-top:8px;border:1px solid var(--line);}
+  .status-ok{color:var(--turtle);border-color:var(--turtle-dark);background:#0f2416;}
+  .status-crash{color:var(--red);border-color:#5a2a22;background:#241512;}
+  .status-cp{color:var(--amber);border-color:#4a3a1c;background:#241d0f;}
+  .status-idle{color:var(--text-dim);}
+
+  .log{max-height:150px;overflow-y:auto;font-size:11px;display:flex;flex-direction:column-reverse;gap:4px;}
+  .log div{border-bottom:1px dashed var(--line);padding:3px 0;color:var(--text-dim);}
+  .log div b{color:var(--text);}
+
+  .lb-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--line);}
+  .lb-row .rank{color:var(--amber);width:22px;display:inline-block;}
+  .lb-row .name{color:var(--text);}
+  .lb-row .time{color:var(--turtle);font-weight:600;}
+  .lb-empty{color:var(--text-dim);font-size:12px;}
+
+  details{font-size:12px;color:var(--text-dim);}
+  details summary{cursor:pointer;color:var(--blue);margin-bottom:6px;}
+  .save-form{display:flex;gap:8px;margin-top:8px;}
+  .save-form input{
+    flex:1;background:var(--bg-deep);border:1px solid var(--line);color:var(--text);
+    padding:8px;border-radius:6px;font-family:'IBM Plex Mono',monospace;
+  }
+  .note{font-size:11px;color:var(--text-dim);line-height:1.5;}
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <span class="shell">🐱</span>
+  <h1>Cat Vector Racer</h1>
+  <span class="tag" id="lapTag">RUN 0 / 1</span>
+</div>
+
+<div class="layout">
+
+  <div class="track-wrap">
+    <canvas id="track" width="900" height="600"></canvas>
+    <div class="hud-strip">
+      <div class="hud-chip">SPEED <b id="hudSpeed">0.0</b> m/s</div>
+      <div class="hud-chip">HEADING <b id="hudHeading">0°</b></div>
+      <div class="hud-chip">RACE TIME <b id="hudTime">0.0s</b></div>
+      <div class="hud-chip">MOVES <b id="hudMoves">0</b></div>
+      <div class="hud-chip">CRASHES <b id="hudCrash">0</b></div>
+      <div class="hud-chip">NEXT CHECKPOINT <b id="hudGate">Start</b></div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+
+    <div class="panel">
+      <h2>Type Your Move Vector</h2>
+
+      <div class="field">
+        <label>Acceleration, 0–200 (m/s²) <span class="val" id="accVal">10</span></label>
+        <input type="number" id="accNum" min="0" max="200" step="1" value="10">
+        <input type="range" id="accSlider" min="0" max="200" step="1" value="10">
+      </div>
+
+      <div class="field">
+        <label>Angle, -180 to 180° (0=right, 90=up, ccw, minus=clockwise) <span class="val" id="angVal">0</span></label>
+        <input type="number" id="angNum" min="-180" max="180" step="1" value="0">
+        <input type="range" id="angSlider" min="-180" max="180" step="1" value="0">
+      </div>
+
+      <div class="field">
+        <label>Duration (seconds) <span class="val" id="durVal">1.0</span></label>
+        <input type="number" id="durNum" min="0.1" max="30" step="0.1" value="1">
+        <input type="range" id="durSlider" min="0.2" max="5" step="0.1" value="1">
+      </div>
+
+      <div class="btnrow">
+        <button id="applyBtn">▶ Apply Move</button>
+        <button class="secondary" id="resetBtn">Reset Race</button>
+      </div>
+
+      <div class="status-line status-idle" id="statusLine">Preview shown on track. Type your numbers, then Apply Move.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Move Log</h2>
+      <div class="log" id="moveLog"><div>No moves yet — the cat is waiting at the start line.</div></div>
+    </div>
+
+    <div class="panel" id="finishPanel" style="display:none;">
+      <h2>🏁 Race Complete</h2>
+      <div class="note">Finished in <b id="finalTime" style="color:var(--turtle)"></b> across <b id="finalMoves" style="color:var(--turtle)"></b> moves. Save your run to the leaderboard:</div>
+      <div class="save-form">
+        <input type="text" id="playerName" maxlength="18" placeholder="Your name">
+        <button id="saveScoreBtn">Save</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Leaderboard</h2>
+      <div id="leaderboard"><div class="lb-empty">Loading…</div></div>
+      <div class="row2" style="margin-top:10px;">
+        <select id="lapSelect" style="background:var(--bg-deep);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px;font-family:'IBM Plex Mono',monospace;">
+          <option value="1" selected>1 run</option>
+          <option value="2">2 runs</option>
+          <option value="3">3 runs</option>
+        </select>
+        <button class="secondary" id="refreshLbBtn">Refresh board</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <details>
+        <summary>How to play</summary>
+        <div class="note">
+          Each turn, type a <b>duration</b>: a fixed <b>acceleration</b> (up to 200 m/s²) at a fixed <b>angle</b>
+          (from -180° to 180°). Example: acceleration 10, angle 0°, duration 2s pushes the cat rightward, speeding
+          it up for 2 seconds — it keeps that new velocity until your next move changes it. Angles: 0°=right,
+          90°=up, 180°/-180°=left, -90°=down; negative angles turn clockwise instead of counter-clockwise.
+          Stay on the winding blue road — running off it into the white costs you the full move's time as a
+          penalty and resets your velocity to zero. Pass each blue checkpoint circle in order, then reach the
+          checkered flag at the end to finish. If you picked more than one run, finishing teleports you back to
+          the start for another timed attempt, and your total time keeps adding up.
+          <br><br>
+          <b>About the leaderboard:</b> this demo stores scores in this artifact's built-in persistent key-value
+          storage rather than an external Firebase/Google Sheets project — that lets the leaderboard genuinely
+          persist and be shared across everyone who opens this artifact, without needing you to create and paste in
+          your own cloud credentials. If you'd like, I can swap this for a real Firebase or Google Sheets backend
+          using your own project keys.
+        </div>
+      </details>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+(function(){
+  const canvas = document.getElementById('track');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // ---- Track geometry: a winding single road from start to a checkered finish ----
+  // Control points sketch the S-curve/hump/valley/climb shape, then a Catmull-Rom
+  // spline is sampled densely so the road curves smoothly instead of kinking at each point.
+  const CTRL = [
+    {x:40,  y:440},
+    {x:150, y:440},
+    {x:250, y:320},
+    {x:230, y:190},
+    {x:350, y:190},
+    {x:420, y:330},
+    {x:560, y:400},
+    {x:650, y:320},
+    {x:700, y:190},
+    {x:800, y:140},
+    {x:880, y:60},
+  ];
+  const TRACK_HALF_WIDTH = 46;
+
+  function catmullRom(p0,p1,p2,p3,t){
+    const t2=t*t, t3=t2*t;
+    return {
+      x: 0.5*((2*p1.x) + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+      y: 0.5*((2*p1.y) + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
+    };
+  }
+  function buildSpline(ctrl, samplesPerSeg){
+    const pts = [ctrl[0], ...ctrl, ctrl[ctrl.length-1]];
+    const out = [ctrl[0]];
+    for (let i=1;i<pts.length-2;i++){
+      for (let s=1;s<=samplesPerSeg;s++){
+        out.push(catmullRom(pts[i-1],pts[i],pts[i+1],pts[i+2], s/samplesPerSeg));
+      }
+    }
+    return out;
+  }
+  const SPLINE = buildSpline(CTRL, 24);
+
+  // cumulative arc length along the spline, used to place checkpoints evenly by distance
+  const SPLINE_LEN = [0];
+  for (let i=1;i<SPLINE.length;i++){
+    SPLINE_LEN.push(SPLINE_LEN[i-1] + Math.hypot(SPLINE[i].x-SPLINE[i-1].x, SPLINE[i].y-SPLINE[i-1].y));
+  }
+  const TOTAL_LEN = SPLINE_LEN[SPLINE_LEN.length-1];
+  function pointAtFraction(f){
+    const target = f*TOTAL_LEN;
+    let i = 1;
+    while (i<SPLINE_LEN.length && SPLINE_LEN[i] < target) i++;
+    i = Math.min(i, SPLINE.length-1);
+    const segLen = SPLINE_LEN[i]-SPLINE_LEN[i-1];
+    const frac = segLen>0 ? (target-SPLINE_LEN[i-1])/segLen : 0;
+    return {
+      x: SPLINE[i-1].x + (SPLINE[i].x-SPLINE[i-1].x)*frac,
+      y: SPLINE[i-1].y + (SPLINE[i].y-SPLINE[i-1].y)*frac,
+    };
+  }
+
+  function distToSegment(px,py,ax,ay,bx,by){
+    const abx=bx-ax, aby=by-ay;
+    const apx=px-ax, apy=py-ay;
+    const abLen2 = abx*abx+aby*aby;
+    let t = abLen2>0 ? (apx*abx+apy*aby)/abLen2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px-(ax+abx*t), py-(ay+aby*t));
+  }
+  function minDistToPath(x,y){
+    let best = Infinity;
+    for (let i=0;i<SPLINE.length-1;i++){
+      const d = distToSegment(x,y,SPLINE[i].x,SPLINE[i].y,SPLINE[i+1].x,SPLINE[i+1].y);
+      if (d<best) best=d;
+      if (best < 1) break; // already well inside, no need to keep scanning
+    }
+    return best;
+  }
+  function isOnTrack(x,y){
+    if (x<2||x>W-2||y<2||y>H-2) return false;
+    return minDistToPath(x,y) <= TRACK_HALF_WIDTH;
+  }
+
+  const START = {x:SPLINE[0].x, y:SPLINE[0].y};
+  const FINISH = {x:SPLINE[SPLINE.length-1].x, y:SPLINE[SPLINE.length-1].y, r:42};
+  const CHECKPOINT_FRACTIONS = [0.22, 0.45, 0.68, 0.88];
+  const GATES = CHECKPOINT_FRACTIONS.map((f,i)=>{
+    const p = pointAtFraction(f);
+    return {name:'Checkpoint '+(i+1), x:p.x, y:p.y, r:32};
+  });
+  // purely decorative dots off the road, echoing the reference image's floating circles
+  const DECOR_DOTS = [
+    {x:75, y:80, r:34},
+    {x:245, y:520, r:30},
+  ];
+
+  function startingVelocity(){
+    const dx = SPLINE[1].x-SPLINE[0].x, dy = SPLINE[1].y-SPLINE[0].y;
+    const len = Math.hypot(dx,dy)||1;
+    return {x:(dx/len)*3, y:(dy/len)*3};
+  }
+
+  // ---- Race state ----
+  let pos = {x:START.x, y:START.y};
+  let vel = startingVelocity();
+  let raceTime = 0;
+  let moveCount = 0;
+  let crashCount = 0;
+  let nextGate = 0; // 0..GATES.length-1 = checkpoints, GATES.length = finish
+  let finished = false;
+  let finishTime = null;
+  let trail = []; // committed path points for drawing
+  let animating = false;
+  let requiredLaps = 1;
+  let lapsDone = 0;
+
+  trail.push({x:pos.x, y:pos.y});
+
+  const els = {
+    accSlider: document.getElementById('accSlider'),
+    accNum: document.getElementById('accNum'),
+    angSlider: document.getElementById('angSlider'),
+    angNum: document.getElementById('angNum'),
+    durSlider: document.getElementById('durSlider'),
+    durNum: document.getElementById('durNum'),
+    accVal: document.getElementById('accVal'),
+    angVal: document.getElementById('angVal'),
+    durVal: document.getElementById('durVal'),
+    applyBtn: document.getElementById('applyBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    statusLine: document.getElementById('statusLine'),
+    moveLog: document.getElementById('moveLog'),
+    hudSpeed: document.getElementById('hudSpeed'),
+    hudHeading: document.getElementById('hudHeading'),
+    hudTime: document.getElementById('hudTime'),
+    hudMoves: document.getElementById('hudMoves'),
+    hudCrash: document.getElementById('hudCrash'),
+    hudGate: document.getElementById('hudGate'),
+    lapTag: document.getElementById('lapTag'),
+    finishPanel: document.getElementById('finishPanel'),
+    finalTime: document.getElementById('finalTime'),
+    finalMoves: document.getElementById('finalMoves'),
+    playerName: document.getElementById('playerName'),
+    saveScoreBtn: document.getElementById('saveScoreBtn'),
+    leaderboard: document.getElementById('leaderboard'),
+    lapSelect: document.getElementById('lapSelect'),
+    refreshLbBtn: document.getElementById('refreshLbBtn'),
+  };
+
+  function syncPair(slider, num, decimals){
+    slider.addEventListener('input', ()=>{ num.value = slider.value; onInputChange(); });
+    num.addEventListener('input', ()=>{ slider.value = num.value; onInputChange(); });
+  }
+  syncPair(els.accSlider, els.accNum);
+  syncPair(els.angSlider, els.angNum);
+  syncPair(els.durSlider, els.durNum);
+
+  function getInputs(){
+    return {
+      a: parseFloat(els.accNum.value)||0,
+      ang: parseFloat(els.angNum.value)||0,
+      t: Math.max(0.1, parseFloat(els.durNum.value)||0.1),
+    };
+  }
+
+  function stateAt(t, a, angDeg){
+    const rad = angDeg*Math.PI/180;
+    const ax = a*Math.cos(rad), ay = -a*Math.sin(rad); // canvas y is flipped
+    const x = pos.x + vel.x*t + 0.5*ax*t*t;
+    const y = pos.y + vel.y*t + 0.5*ay*t*t;
+    const vx = vel.x + ax*t, vy = vel.y + ay*t;
+    return {x,y,vx,vy,ax,ay};
+  }
+
+  function simulateMove(a, angDeg, T){
+    // Always guarantee at least one valid sample point (the cat's current spot),
+    // so nothing downstream ever indexes into an empty array.
+    const startSample = {t:0, x:pos.x, y:pos.y, vx:vel.x, vy:vel.y};
+    if (!isFinite(a) || !isFinite(angDeg) || !isFinite(T) || T<=0){
+      return {outcome:'ok', samples:[startSample], finalVel:{x:vel.x,y:vel.y}, finalPos:{x:pos.x,y:pos.y}, gateHitsThisMove:[]};
+    }
+    const steps = 120; // fine sampling for smooth turning + accurate collision on tight hazards
+    const samples = [startSample];
+    let crashAt = null;
+    let gateHitsThisMove = [];
+    let localNextGate = nextGate;
+    for (let i=1;i<=steps;i++){
+      const t = T*i/steps;
+      const s = stateAt(t, a, angDeg);
+      if (!isFinite(s.x) || !isFinite(s.y)){
+        crashAt = i;
+        samples.push(samples[samples.length-1]);
+        break;
+      }
+      samples.push({t, x:s.x, y:s.y, vx:s.vx, vy:s.vy});
+      if (!isOnTrack(s.x, s.y)){
+        crashAt = i;
+        break;
+      }
+      // gate / finish detection in order
+      if (localNextGate < GATES.length){
+        const g = GATES[localNextGate];
+        if (Math.hypot(s.x-g.x, s.y-g.y) <= g.r){
+          gateHitsThisMove.push(localNextGate);
+          localNextGate++;
+        }
+      } else {
+        if (Math.hypot(s.x-FINISH.x, s.y-FINISH.y) <= FINISH.r){
+          gateHitsThisMove.push('FINISH');
+          return {outcome:'finish', samples: samples.slice(), finishT:t, gateHitsThisMove};
+        }
+      }
+    }
+    if (crashAt !== null){
+      return {outcome:'crash', samples, gateHitsThisMove};
+    }
+    const last = stateAt(T, a, angDeg);
+    if (!isFinite(last.x) || !isFinite(last.y) || !isFinite(last.vx) || !isFinite(last.vy)){
+      return {outcome:'crash', samples, gateHitsThisMove};
+    }
+    return {outcome:'ok', samples, finalVel:{x:last.vx,y:last.vy}, finalPos:{x:last.x,y:last.y}, gateHitsThisMove};
+  }
+
+  // ---- Drawing ----
+  function drawTrack(rotVel){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,W,H);
+
+    // road (stroked spline path — round joins/caps make the thick line curve smoothly)
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(SPLINE[0].x, SPLINE[0].y);
+    for (const p of SPLINE) ctx.lineTo(p.x, p.y);
+    ctx.lineWidth = TRACK_HALF_WIDTH*2 + 6;
+    ctx.strokeStyle = '#5f76a3';
+    ctx.stroke();
+    ctx.lineWidth = TRACK_HALF_WIDTH*2;
+    ctx.strokeStyle = '#7f97c4';
+    ctx.stroke();
+
+    // decorative dots (no gameplay effect, just echoing the reference image)
+    DECOR_DOTS.forEach(d=>{
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI*2);
+      ctx.fillStyle = '#3d3dcf';
+      ctx.fill();
+    });
+
+    // checkpoints
+    GATES.forEach((g,i)=>{
+      const passed = i < nextGate;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, g.r, 0, Math.PI*2);
+      ctx.fillStyle = passed ? '#3f9d55' : '#3d3dcf';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 13px IBM Plex Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('C'+(i+1), g.x, g.y+4);
+    });
+
+    // start marker
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = '700 11px IBM Plex Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('START', START.x, START.y+TRACK_HALF_WIDTH+18);
+
+    // checkered finish flag
+    ctx.font = '34px sans-serif';
+    ctx.fillText('🏁', FINISH.x, FINISH.y-TRACK_HALF_WIDTH-6);
+
+    // trail
+    if (trail.length>1){
+      ctx.beginPath();
+      ctx.moveTo(trail[0].x, trail[0].y);
+      for (const p of trail) ctx.lineTo(p.x,p.y);
+      ctx.strokeStyle = '#276033';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    const rv = rotVel || vel;
+    drawCat(pos.x, pos.y, Math.atan2(-rv.y, rv.x));
+  }
+
+  function drawCat(x,y,rot){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(-rot);
+    // tiny cat: oval body, round head, triangle ears, curled tail, little paws
+    ctx.fillStyle = '#e8963f';
+    // tail (curls behind, opposite the heading)
+    ctx.beginPath();
+    ctx.moveTo(-9,2);
+    ctx.quadraticCurveTo(-17,-6,-11,-11);
+    ctx.quadraticCurveTo(-16,-8,-14,1);
+    ctx.fill();
+    // body
+    ctx.beginPath(); ctx.ellipse(-2,0,9,6.5,0,0,Math.PI*2); ctx.fill();
+    // paws
+    ctx.fillStyle = '#c97a2f';
+    [[-6,6],[2,6]].forEach(([lx,ly])=>{
+      ctx.beginPath(); ctx.ellipse(lx,ly,2.6,2,0,0,Math.PI*2); ctx.fill();
+    });
+    // head
+    ctx.fillStyle = '#f0a94e';
+    ctx.beginPath(); ctx.arc(8,0,6.5,0,Math.PI*2); ctx.fill();
+    // ears
+    ctx.beginPath();
+    ctx.moveTo(5,-5); ctx.lineTo(3,-10); ctx.lineTo(8,-6.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(11,-5); ctx.lineTo(13,-10); ctx.lineTo(8.5,-6.5); ctx.closePath(); ctx.fill();
+    // face stripe + eyes
+    ctx.fillStyle = '#2a1a10';
+    ctx.beginPath(); ctx.arc(10,-1.5,0.9,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(10,1.5,0.9,0,Math.PI*2); ctx.fill();
+    // nose
+    ctx.fillStyle = '#c65b4a';
+    ctx.beginPath(); ctx.arc(14,0,1,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPreview(){
+    const {a,ang,t} = getInputs();
+    const sim = simulateMove(a, ang, t);
+    ctx.beginPath();
+    ctx.moveTo(pos.x,pos.y);
+    for (const s of sim.samples) ctx.lineTo(s.x,s.y);
+    ctx.strokeStyle = sim.outcome==='crash' ? '#d1543f' : '#e35fc0';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([2,4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // heading arrow (red, like a raw angle pointer) from current position
+    const rad = ang*Math.PI/180;
+    const arrowLen = 90;
+    ctx.beginPath();
+    ctx.moveTo(pos.x,pos.y);
+    ctx.lineTo(pos.x+Math.cos(rad)*arrowLen, pos.y-Math.sin(rad)*arrowLen);
+    ctx.strokeStyle = '#d1543f';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    return sim;
+  }
+
+  function render(rotVel){
+    try{
+      drawTrack(rotVel);
+      if (!finished) drawPreview();
+    } catch(err){
+      console.error('Render skipped a frame:', err);
+    }
+  }
+
+  function onInputChange(){
+    els.accVal.textContent = parseFloat(els.accNum.value).toFixed(0);
+    els.angVal.textContent = parseFloat(els.angNum.value).toFixed(0)+'°';
+    els.durVal.textContent = parseFloat(els.durNum.value).toFixed(1);
+    if (!animating) render();
+  }
+
+  function fmtTime(s){ return s.toFixed(2)+'s'; }
+
+  function updateHud(){
+    els.hudSpeed.textContent = Math.hypot(vel.x,vel.y).toFixed(1);
+    els.hudHeading.textContent = ((Math.atan2(-vel.y,vel.x)*180/Math.PI+360)%360).toFixed(0)+'°';
+    els.hudTime.textContent = fmtTime(raceTime);
+    els.hudMoves.textContent = moveCount;
+    els.hudCrash.textContent = crashCount;
+    els.hudGate.textContent = nextGate<GATES.length ? GATES[nextGate].name : 'Finish line';
+    els.lapTag.textContent = 'RUN '+lapsDone+' / '+requiredLaps;
+  }
+
+  function logMove(text, cls){
+    const empty = els.moveLog.querySelector('div');
+    if (els.moveLog.children.length===1 && empty.textContent.includes('No moves')) els.moveLog.innerHTML='';
+    const div = document.createElement('div');
+    div.innerHTML = text;
+    div.style.color = cls==='crash' ? '#d1543f' : cls==='cp' ? '#e3a33d' : '#93a898';
+    els.moveLog.appendChild(div);
+    els.moveLog.scrollTop = els.moveLog.scrollHeight;
+  }
+
+  function setStatus(text, cls){
+    els.statusLine.className = 'status-line status-'+cls;
+    els.statusLine.textContent = text;
+  }
+
+  function lockRaceControls(locked){
+    [els.accSlider, els.accNum, els.angSlider, els.angNum, els.durSlider, els.durNum, els.applyBtn].forEach(el=>{
+      el.disabled = locked;
+    });
+  }
+
+  function easeInOutQuad(x){
+    return x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x+2, 2)/2;
+  }
+
+  function animateSamples(samples, onDone){
+    if (!samples || samples.length===0) samples = [{x:pos.x,y:pos.y,vx:vel.x,vy:vel.y}];
+    animating = true;
+    els.applyBtn.disabled = true;
+    // Longer, eased playback with fine sample resolution = smooth, gradual turning instead of jumpy steps.
+    const playbackMs = Math.min(2400, Math.max(500, samples.length*16));
+    const startT = performance.now();
+    function frame(now){
+      const rawProg = Math.min(1, (now-startT)/playbackMs);
+      const prog = easeInOutQuad(rawProg);
+      const exact = prog*(samples.length-1);
+      const i0 = Math.floor(exact), i1 = Math.min(samples.length-1, i0+1);
+      const frac = exact - i0;
+      const a = samples[i0], b = samples[i1];
+      // interpolate position AND velocity between adjacent samples for a smooth glide/turn
+      const s = {
+        x: a.x + (b.x-a.x)*frac,
+        y: a.y + (b.y-a.y)*frac,
+        vx: (a.vx!=null&&b.vx!=null) ? a.vx+(b.vx-a.vx)*frac : (b.vx!=null?b.vx:vel.x),
+        vy: (a.vy!=null&&b.vy!=null) ? a.vy+(b.vy-a.vy)*frac : (b.vy!=null?b.vy:vel.y),
+      };
+      pos = {x:s.x, y:s.y};
+      render((Math.hypot(s.vx,s.vy) > 0.05) ? {x:s.vx,y:s.vy} : vel);
+      if (rawProg<1){
+        requestAnimationFrame(frame);
+      } else {
+        animating = false;
+        els.applyBtn.disabled = false;
+        onDone();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function applyMove(){
+    if (finished || animating) return;
+    const {a,ang,t} = getInputs();
+    const sim = simulateMove(a, ang, t);
+    moveCount++;
+
+    if (sim.outcome==='crash'){
+      crashCount++;
+      raceTime += t; // time penalty even on crash
+      animateSamples(sim.samples, ()=>{
+        pos = {x:sim.samples[0].x, y:sim.samples[0].y}; // revert to move start
+        vel = {x:0, y:0};
+        trail = [{x:pos.x,y:pos.y}];
+        updateHud();
+        setStatus('💥 Off track! Velocity reset to zero. Full duration counted as a penalty.', 'crash');
+        logMove('#'+moveCount+' — a='+a+' ang='+ang+'° t='+t+'s → <b>CRASH</b> (reset)', 'crash');
+        render();
+      });
+      return;
+    }
+
+    if (sim.outcome==='finish'){
+      raceTime += sim.finishT;
+      const last = sim.samples[sim.samples.length-1];
+      animateSamples(sim.samples, ()=>{
+        pos = {x:last.x, y:last.y};
+        trail.push(pos);
+        nextGate = GATES.length;
+        lapsDone++;
+        if (lapsDone >= requiredLaps){
+          finished = true;
+          finishTime = raceTime;
+          vel = {x:0, y:0}; // race is over, cat parks
+          setStatus('🏁 Race over! Total time '+fmtTime(raceTime)+'. Reset to race again.', 'ok');
+          logMove('#'+moveCount+' — a='+a+' ang='+ang+'° → <b>FINISH — RACE OVER</b>', 'cp');
+          els.finishPanel.style.display = 'block';
+          els.finalTime.textContent = fmtTime(finishTime);
+          els.finalMoves.textContent = moveCount;
+          lockRaceControls(true);
+          els.playerName.focus();
+        } else {
+          nextGate = 0;
+          pos = {x:START.x, y:START.y};
+          vel = startingVelocity();
+          trail = [{x:pos.x,y:pos.y}];
+          setStatus('🏁 Run '+lapsDone+' complete! Teleported back to start for the next run.', 'cp');
+          logMove('#'+moveCount+' — a='+a+' ang='+ang+'° → <b>RUN '+lapsDone+' COMPLETE</b>', 'cp');
+        }
+        updateHud();
+        render();
+      });
+      return;
+    }
+
+    // ok
+    raceTime += t;
+    animateSamples(sim.samples, ()=>{
+      pos = sim.finalPos;
+      vel = sim.finalVel;
+      trail.push({x:pos.x,y:pos.y});
+      if (sim.gateHitsThisMove.length){
+        nextGate += sim.gateHitsThisMove.length;
+        setStatus('✅ Gate passed! Speed now '+Math.hypot(vel.x,vel.y).toFixed(1)+' m/s.', 'cp');
+        logMove('#'+moveCount+' — a='+a+' ang='+ang+'° t='+t+'s → gate passed, v='+Math.hypot(vel.x,vel.y).toFixed(1)+'m/s', 'cp');
+      } else {
+        setStatus('Move applied. Speed now '+Math.hypot(vel.x,vel.y).toFixed(1)+' m/s.', 'ok');
+        logMove('#'+moveCount+' — a='+a+' ang='+ang+'° t='+t+'s → v='+Math.hypot(vel.x,vel.y).toFixed(1)+'m/s', 'ok');
+      }
+      updateHud();
+      render();
+    });
+  }
+
+  function resetRace(){
+    pos = {x:START.x, y:START.y};
+    vel = startingVelocity();
+    raceTime = 0; moveCount = 0; crashCount = 0; nextGate = 0; finished = false;
+    finishTime = null; trail = [{x:pos.x,y:pos.y}]; lapsDone = 0;
+    requiredLaps = parseInt(els.lapSelect.value)||1;
+    els.finishPanel.style.display = 'none';
+    els.moveLog.innerHTML = '<div>No moves yet — the cat is waiting at the start line.</div>';
+    setStatus('Preview shown on track. Type your numbers, then Apply Move.', 'idle');
+    lockRaceControls(false);
+    updateHud();
+    render();
+  }
+
+  els.applyBtn.addEventListener('click', applyMove);
+  els.resetBtn.addEventListener('click', resetRace);
+  els.lapSelect.addEventListener('change', resetRace);
+
+  // ---- Leaderboard (persistent shared storage) ----
+  async function loadLeaderboard(){
+    els.leaderboard.innerHTML = '<div class="lb-empty">Loading…</div>';
+    try{
+      let entries = [];
+      try{
+        const res = await window.storage.get('leaderboard', true);
+        entries = res && res.value ? JSON.parse(res.value) : [];
+      } catch(e){ entries = []; }
+      const laps = parseInt(els.lapSelect.value)||1;
+      const filtered = entries.filter(e=>e.laps===laps).sort((a,b)=>a.time-b.time).slice(0,10);
+      if (!filtered.length){
+        els.leaderboard.innerHTML = '<div class="lb-empty">No times yet for '+laps+' run(s) — be the first!</div>';
+        return;
+      }
+      els.leaderboard.innerHTML = filtered.map((e,i)=>
+        '<div class="lb-row"><span><span class="rank">#'+(i+1)+'</span><span class="name">'+escapeHtml(e.name)+'</span></span><span class="time">'+e.time.toFixed(2)+'s</span></div>'
+      ).join('');
+    } catch(err){
+      els.leaderboard.innerHTML = '<div class="lb-empty">Couldn\'t load leaderboard right now.</div>';
+    }
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  async function saveScore(){
+    const name = (els.playerName.value||'Anonymous').trim().slice(0,18) || 'Anonymous';
+    els.saveScoreBtn.disabled = true;
+    try{
+      let entries = [];
+      try{
+        const res = await window.storage.get('leaderboard', true);
+        entries = res && res.value ? JSON.parse(res.value) : [];
+      } catch(e){ entries = []; }
+      entries.push({name, time: finishTime, laps: requiredLaps, moves: moveCount, date: new Date().toISOString()});
+      entries.sort((a,b)=>a.time-b.time);
+      entries = entries.slice(0,200);
+      await window.storage.set('leaderboard', JSON.stringify(entries), true);
+      await loadLeaderboard();
+      els.saveScoreBtn.textContent = 'Saved ✓';
+    } catch(err){
+      els.saveScoreBtn.textContent = 'Save failed';
+    } finally {
+      setTimeout(()=>{ els.saveScoreBtn.disabled=false; els.saveScoreBtn.textContent='Save'; }, 1500);
+    }
+  }
+  els.saveScoreBtn.addEventListener('click', saveScore);
+  els.refreshLbBtn.addEventListener('click', loadLeaderboard);
+
+  // init
+  onInputChange();
+  resetRace();
+  loadLeaderboard();
+})();
+</script>
+</body>
+</html>
